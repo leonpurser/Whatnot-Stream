@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en" data-wnsc-mock>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock Whatnot Show</title>
+<!--
+  Offline stand-in for a Whatnot show page, for developing / rehearsing the
+  probe without being live. It reproduces the data-testid hooks we found on
+  the real page. TEXT FORMATS HERE ARE GUESSES based on one captured page:
+  always re-verify against real shows. The current price lives in a
+  mock-only element (data-testid="mock-current-price") because we have not
+  yet found where Whatnot shows it.
+-->
+<style>
+  :root { color-scheme: dark; --bg:#0d0d10; --card:#1a1a20; --line:#2c2c35; --fg:#eee; --muted:#999; --accent:#ffd400; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  main { display: grid; grid-template-columns: 320px 1fr; gap: 16px; padding: 16px; max-width: 1100px; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  #chat { height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  [data-testid="chat-message"] { display: flex; gap: 6px; align-items: baseline; }
+  [data-testid="chat-message-avatar-link"] { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .card { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; }
+  [data-testid="show-product-image"] { width: 96px; height: 96px; border-radius: 8px; background: #333; object-fit: cover; }
+  [data-testid="show-product-title"] { font-weight: 700; }
+  .meta { color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+  [data-testid="show-timer"] { font-variant-numeric: tabular-nums; font-weight: 700; }
+  [data-testid="show-winning-status"] { margin-top: 6px; color: var(--accent); min-height: 1.4em; }
+  [data-testid="show-bid-button"] { margin-top: 8px; padding: 8px 14px; border-radius: 20px; border: 0; background: var(--accent); color: #000; font-weight: 700; }
+  .controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .controls button { background: #2a2a33; color: var(--fg); border: 1px solid #444; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  .controls button:hover { background: #3a3a45; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <section class="panel" data-testid="desktop-chat-panel">
+    <h2>Chat</h2>
+    <div id="chat"></div>
+  </section>
+
+  <section>
+    <div class="panel" id="card-host"></div>
+
+    <div class="panel" style="margin-top:16px">
+      <h2>Simulator</h2>
+      <div class="controls">
+        <button data-act="next">Next item</button>
+        <button data-act="start">Start auction (15s)</button>
+        <button data-act="bid">Bid</button>
+        <button data-act="war">Bidding war (6 fast bids)</button>
+        <button data-act="snipe">Snipe (bid + extend)</button>
+        <button data-act="rerun">Re-run same title</button>
+        <button data-act="giveaway">Giveaway</button>
+        <button data-act="chat">Chat message</button>
+        <button data-act="rerender">Re-render card</button>
+        <button data-act="flicker">Flicker "won"</button>
+        <button data-act="auto">Auto show: <span id="auto-state">off</span></button>
+      </div>
+      <p class="note">Re-render card replaces the whole card DOM with identical content. Use it after a sale to check the
+        probe does not fire SOLD twice.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const USERS = ['dommy31', 'sarah_k', 'dave.thrifts', 'ben_vintage', 'lucy88', 'tomtom', 'amy_resells'];
+  const ITEMS = ['Vintage Nike Sweatshirt', 'Lacoste Polo Size M', 'Levis 501 W32', 'Ralph Lauren Oxford Shirt',
+    'Carhartt Detroit Jacket', 'Stone Island Overshirt', 'Patagonia Synchilla Fleece', 'Adidas Track Top'];
+  const CONDS = ['New With Tags', 'Pre-Owned', 'Like New', 'New Without Tags'];
+  const CHAT = ['Can you show the back?', 'What size is it?', 'Pit to pit?', 'lets gooo', 'is it real?', 'bundle?', 'love that'];
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+  let lot = 347;
+  const s = { title: '', cond: '', bids: 0, price: 0, leader: null, timer: null, status: '', ended: true, giveaway: false };
+  let tick = null;
+
+  const host = document.getElementById('card-host');
+
+  function render() {
+    host.textContent = '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <img data-testid="show-product-image" alt="">
+      <div>
+        <div data-testid="show-product-title"></div>
+        <div class="meta"><span class="cond"></span><span class="bids"></span><span data-testid="show-timer"></span>
+          <span data-testid="mock-current-price"></span></div>
+        <div data-testid="show-winning-status"></div>
+        <button data-testid="show-bid-button"></button>
+      </div>`;
+    card.querySelector('img').src = 'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#445"/><text x="48" y="54" fill="#fff" font-size="16" text-anchor="middle">#${lot}</text></svg>`);
+    card.querySelector('[data-testid="show-product-title"]').textContent = s.title;
+    card.querySelector('.cond').textContent = s.cond;
+    card.querySelector('.bids').textContent = s.title ? `${s.bids} ${s.bids === 1 ? 'Bid' : 'Bids'}` : '';
+    const timerEl = card.querySelector('[data-testid="show-timer"]');
+    timerEl.textContent = s.timer == null ? '' : `00:${String(s.timer).padStart(2, '0')}`;
+    card.querySelector('[data-testid="mock-current-price"]').textContent = s.bids ? `£${s.price}` : '';
+    card.querySelector('[data-testid="show-winning-status"]').textContent = s.status;
+    const btn = card.querySelector('[data-testid="show-bid-button"]');
+    btn.textContent = `Bid: £${s.bids ? s.price + 1 : Math.max(1, s.price)}`;
+    btn.style.visibility = s.ended ? 'hidden' : 'visible';
+    host.appendChild(card);
+  }
+
+  // Update text in place (like a React re-render) instead of rebuilding.
+  function update() {
+    if (!host.firstChild) return render();
+    const c = host.firstChild;
+    c.querySelector('[data-testid="show-product-title"]').textContent = s.title;
+    c.querySelector('.cond').textContent = s.cond;
+    c.querySelector('.bids').textContent = s.title ? `${s.bids} ${s.bids === 1 ? 'Bid' : 'Bids'}` : '';
+    c.querySelector('[data-testid="show-timer"]').textContent = s.timer == null ? '' : `00:${String(s.timer).padStart(2, '0')}`;
+    c.querySelector('[data-testid="mock-current-price"]').textContent = s.bids ? `£${s.price}` : '';
+    c.querySelector('[data-testid="show-winning-status"]').textContent = s.status;
+    const btn = c.querySelector('[data-testid="show-bid-button"]');
+    btn.textContent = `Bid: £${s.bids ? s.price + 1 : Math.max(1, s.price)}`;
+    btn.style.visibility = s.ended ? 'hidden' : 'visible';
+  }
+
+  function nextItem(sameTitle) {
+    stop();
+    if (!sameTitle) {
+      lot += 1;
+      s.title = `${pick(ITEMS)} #${lot}`;
+      s.cond = pick(CONDS);
+    }
+    s.giveaway = /giveaway/i.test(s.title);
+    Object.assign(s, { bids: 0, price: 1, leader: null, timer: 15, status: '', ended: false });
+    render();
+  }
+
+  function start() {
+    if (s.ended || !s.title) nextItem();
+    stop();
+    tick = setInterval(() => {
+      s.timer = Math.max(0, s.timer - 1);
+      if (s.timer === 0) finish();
+      update();
+    }, 1000);
+    update();
+  }
+
+  function stop() { clearInterval(tick); tick = null; }
+
+  function finish() {
+    stop();
+    s.ended = true;
+    if (s.giveaway) s.status = `${pick(USERS)} won!`;
+    else s.status = s.leader ? `${s.leader} won!` : 'No bids';
+    update();
+  }
+
+  function bid(user) {
+    if (s.ended || s.giveaway) return;
+    let u = user || pick(USERS);
+    if (u === s.leader) u = USERS[(USERS.indexOf(u) + 1) % USERS.length];
+    s.price = s.bids ? s.price + 1 : s.price;
+    s.bids += 1;
+    s.leader = u;
+    s.status = `${u} is Winning!`;
+    update();
+  }
+
+  function chat(user, text) {
+    const list = document.getElementById('chat');
+    const u = user || pick(USERS);
+    const el = document.createElement('div');
+    el.setAttribute('data-testid', 'chat-message');
+    el.innerHTML = `<a data-testid="chat-message-avatar-link"></a><span></span>`;
+    el.firstChild.href = `/user/${encodeURIComponent(u)}`;
+    el.firstChild.textContent = u;
+    el.lastChild.textContent = text || pick(CHAT);
+    list.appendChild(el);
+    while (list.children.length > 60) list.firstChild.remove();
+    list.scrollTop = list.scrollHeight;
+  }
+
+  let auto = null;
+  function toggleAuto() {
+    if (auto) { clearInterval(auto); auto = null; }
+    else {
+      auto = setInterval(() => {
+        if (Math.random() < 0.3) chat();
+        if (s.ended) { if (Math.random() < 0.15) nextItem(), start(); return; }
+        if (s.timer > 0 && Math.random() < (s.timer < 5 ? 0.35 : 0.15)) {
+          bid();
+          if (s.timer < 3) { s.timer = 6; update(); }
+        }
+      }, 700);
+    }
+    document.getElementById('auto-state').textContent = auto ? 'on' : 'off';
+  }
+
+  const actions = {
+    next: () => { nextItem(); },
+    start,
+    bid: () => bid(),
+    war: () => { let n = 0; const iv = setInterval(() => { bid(); if (++n >= 6) clearInterval(iv); }, 350); },
+    snipe: () => { bid(); if (!s.ended) { s.timer = Math.max(s.timer, 10); update(); } },
+    rerun: () => { nextItem(true); start(); },
+    giveaway: () => { stop(); lot += 1; s.title = `GIVEAWAY - Beanie #${lot}`; s.cond = 'New With Tags'; nextItem(true); s.timer = 8; start(); },
+    chat: () => chat(),
+    rerender: render,
+    flicker: () => {
+      const prev = s.status;
+      s.status = `${s.leader || pick(USERS)} won!`; update();
+      setTimeout(() => { s.status = prev; update(); }, 60);
+    },
+    auto: toggleAuto,
+  };
+
+  document.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => actions[b.dataset.act]()));
+  // For automated tests.
+  window.mock = { actions, state: s, chat, bid, finish, nextItem, start };
+
+  for (let i = 0; i < 3; i++) chat();
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Whatnot Show Control – DOM Probe",
+  "version": "0.1.0",
+  "description": "Phase 1 probe: reads the visible Whatnot show page (read-only) and reports auction, sale and chat state.",
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.whatnot.com/*",
+        "http://localhost/mock/*"
+      ],
+      "js": [
+        "src/selectors.js",
+        "src/parse.js",
+        "src/tracker.js",
+        "src/panel.js",
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

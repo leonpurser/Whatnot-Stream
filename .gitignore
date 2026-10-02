@@ -1,0 +1,5 @@
+node_modules/
+*.log
+wnsc-probe-*.json
+data/
+.DS_Store
