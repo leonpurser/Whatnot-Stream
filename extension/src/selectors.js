@@ -24,8 +24,10 @@
     bidButton: ['[data-testid="show-bid-button"]'],
 
     // UNKNOWN YET. The bid button shows the NEXT bid, not the current price.
-    // Use the probe's "Card text" button during a real auction to find the
-    // element that shows the current / final price, then add it here.
+    // On a real show the price appears as "£3" + "Sold" beside the product
+    // card. Until its selector is known, the probe GUESSES it from text (see
+    // PATTERNS.priceSegment / TUNING.trustPriceGuess). Use "Card text" to find
+    // the element, then add its selector here.
     currentPrice: [],
 
     // UNKNOWN YET. Until a dedicated element is found, bid count and
@@ -53,12 +55,19 @@
     noSale: ['no\\s+bids', 'not\\s+sold', 'unsold'],
 
     bidCount: '(\\d[\\d,]*)\\s+bids?\\b',
+    // A text segment that is only an amount, e.g. "£3" (not "Bid: £4",
+    // not "Shipping is £3.27 + Taxes").
+    priceSegment: '^[£$€]\\s?\\d[\\d,]*(?:\\.\\d{1,2})?$',
+    // Bid button text between items. Not an error.
+    bidButtonIdle: 'awaiting|starting|coming up|next item',
     lotNumber: '#\\s?(\\d+)',
     giveawayTitle: '\\bgiveaway\\b',
     chatUserHref: '/user/([^/?#]+)',
     showIdHref: '/live/([^/?#]+)',
 
+    // Matched against whole text segments only, so order doesn't matter.
     conditions: [
+      'Vintage',
       'New With Tags',
       'New Without Tags',
       'New With Defects',
@@ -89,13 +98,17 @@
     chatRepeatWindowMs: 3000,
     maxLogEntries: 3000,
     maxChatTextLength: 500,
+    // How many parent levels above the product card to search for a price.
+    priceGuessMaxLevels: 3,
+    // false: sales priced from the text guess are marked low confidence
+    // (warning "price_is_guess"). Set true once the guess has been checked
+    // against 10-20 real sales.
+    trustPriceGuess: false,
   };
 
-  // Applied only on the local mock page (tools/mock-show), which marks its
-  // <html> element with data-wnsc-mock. Never applied on whatnot.com.
-  WNSC.DEV_OVERRIDES = {
-    currentPrice: ['[data-testid="mock-current-price"]'],
-  };
+  // Selector overrides applied only on the local mock page (tools/mock-show),
+  // which marks its <html> element with data-wnsc-mock. Never on whatnot.com.
+  WNSC.DEV_OVERRIDES = {};
 
   if (typeof module !== 'undefined' && module.exports) module.exports = WNSC;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

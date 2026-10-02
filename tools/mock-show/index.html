@@ -7,10 +7,12 @@
 <!--
   Offline stand-in for a Whatnot show page, for developing / rehearsing the
   probe without being live. It reproduces the data-testid hooks we found on
-  the real page. TEXT FORMATS HERE ARE GUESSES based on one captured page:
-  always re-verify against real shows. The current price lives in a
-  mock-only element (data-testid="mock-current-price") because we have not
-  yet found where Whatnot shows it.
+  the real page. TEXT FORMATS HERE ARE GUESSES based on one captured page and one
+  screenshot: always re-verify against real shows.
+  Layout mirrors what we saw on a real show (2026-10-02): the price ("£3")
+  and a "Sold" label sit BESIDE the product card, the card also contains a
+  "Shipping is £3.27 + Taxes" line, and the bid button reads "Awaiting next
+  item" between auctions.
 -->
 <style>
   :root { color-scheme: dark; --bg:#0d0d10; --card:#1a1a20; --line:#2c2c35; --fg:#eee; --muted:#999; --accent:#ffd400; }
@@ -29,7 +31,11 @@
   .meta { color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
   [data-testid="show-timer"] { font-variant-numeric: tabular-nums; font-weight: 700; }
   [data-testid="show-winning-status"] { margin-top: 6px; color: var(--accent); min-height: 1.4em; }
-  [data-testid="show-bid-button"] { margin-top: 8px; padding: 8px 14px; border-radius: 20px; border: 0; background: var(--accent); color: #000; font-weight: 700; }
+  [data-testid="show-bid-button"] { margin-top: 10px; width: 100%; padding: 10px 14px; border-radius: 20px; border: 0; background: var(--accent); color: #000; font-weight: 700; }
+  .row { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
+  .side { text-align: right; font-weight: 700; display: flex; flex-direction: column; }
+  .side .sold { color: #ff4d4d; }
+  .toast { margin-top: 10px; color: var(--muted); font-size: 12px; min-height: 1.2em; }
   .controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
   .controls button { background: #2a2a33; color: var(--fg); border: 1px solid #444; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
   .controls button:hover { background: #3a3a45; }
@@ -70,9 +76,9 @@
 <script>
 (() => {
   const USERS = ['dommy31', 'sarah_k', 'dave.thrifts', 'ben_vintage', 'lucy88', 'tomtom', 'amy_resells'];
-  const ITEMS = ['Vintage Nike Sweatshirt', 'Lacoste Polo Size M', 'Levis 501 W32', 'Ralph Lauren Oxford Shirt',
+  const ITEMS = ['Premium vintage clothing', 'Vintage Nike Sweatshirt', 'Lacoste Polo Size M', 'Levis 501 W32', 'Ralph Lauren Oxford Shirt',
     'Carhartt Detroit Jacket', 'Stone Island Overshirt', 'Patagonia Synchilla Fleece', 'Adidas Track Top'];
-  const CONDS = ['New With Tags', 'Pre-Owned', 'Like New', 'New Without Tags'];
+  const CONDS = ['New With Tags', 'Pre-Owned', 'Like New', 'Vintage'];
   const CHAT = ['Can you show the back?', 'What size is it?', 'Pit to pit?', 'lets gooo', 'is it real?', 'bundle?', 'love that'];
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -84,30 +90,26 @@
 
   function render() {
     host.textContent = '';
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      <img data-testid="show-product-image" alt="">
-      <div>
-        <div data-testid="show-product-title"></div>
-        <div class="meta"><span class="cond"></span><span class="bids"></span><span data-testid="show-timer"></span>
-          <span data-testid="mock-current-price"></span></div>
-        <div data-testid="show-winning-status"></div>
-        <button data-testid="show-bid-button"></button>
-      </div>`;
-    card.querySelector('img').src = 'data:image/svg+xml,' + encodeURIComponent(
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `
+      <div class="row">
+        <div class="card">
+          <img data-testid="show-product-image" alt="">
+          <div>
+            <div data-testid="show-product-title"></div>
+            <div class="meta"><span class="cond"></span><span class="bids"></span><span data-testid="show-timer"></span></div>
+            <div class="ship">Shipping is £3.27 + Taxes</div>
+            <div data-testid="show-winning-status"></div>
+          </div>
+        </div>
+        <div class="side"><span class="price"></span><span class="sold"></span></div>
+      </div>
+      <button data-testid="show-bid-button"></button>
+      <div class="toast"></div>`;
+    wrap.querySelector('img').src = 'data:image/svg+xml,' + encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#445"/><text x="48" y="54" fill="#fff" font-size="16" text-anchor="middle">#${lot}</text></svg>`);
-    card.querySelector('[data-testid="show-product-title"]').textContent = s.title;
-    card.querySelector('.cond').textContent = s.cond;
-    card.querySelector('.bids').textContent = s.title ? `${s.bids} ${s.bids === 1 ? 'Bid' : 'Bids'}` : '';
-    const timerEl = card.querySelector('[data-testid="show-timer"]');
-    timerEl.textContent = s.timer == null ? '' : `00:${String(s.timer).padStart(2, '0')}`;
-    card.querySelector('[data-testid="mock-current-price"]').textContent = s.bids ? `£${s.price}` : '';
-    card.querySelector('[data-testid="show-winning-status"]').textContent = s.status;
-    const btn = card.querySelector('[data-testid="show-bid-button"]');
-    btn.textContent = `Bid: £${s.bids ? s.price + 1 : Math.max(1, s.price)}`;
-    btn.style.visibility = s.ended ? 'hidden' : 'visible';
-    host.appendChild(card);
+    host.appendChild(wrap);
+    update();
   }
 
   // Update text in place (like a React re-render) instead of rebuilding.
@@ -117,12 +119,12 @@
     c.querySelector('[data-testid="show-product-title"]').textContent = s.title;
     c.querySelector('.cond').textContent = s.cond;
     c.querySelector('.bids').textContent = s.title ? `${s.bids} ${s.bids === 1 ? 'Bid' : 'Bids'}` : '';
-    c.querySelector('[data-testid="show-timer"]').textContent = s.timer == null ? '' : `00:${String(s.timer).padStart(2, '0')}`;
-    c.querySelector('[data-testid="mock-current-price"]').textContent = s.bids ? `£${s.price}` : '';
+    c.querySelector('[data-testid="show-timer"]').textContent = s.timer == null || s.ended ? '' : `00:${String(s.timer).padStart(2, '0')}`;
+    c.querySelector('.price').textContent = s.title && !s.giveaway ? `£${s.price}` : '';
+    c.querySelector('.sold').textContent = s.ended && s.leader && !s.giveaway ? 'Sold' : '';
     c.querySelector('[data-testid="show-winning-status"]').textContent = s.status;
-    const btn = c.querySelector('[data-testid="show-bid-button"]');
-    btn.textContent = `Bid: £${s.bids ? s.price + 1 : Math.max(1, s.price)}`;
-    btn.style.visibility = s.ended ? 'hidden' : 'visible';
+    c.querySelector('[data-testid="show-bid-button"]').textContent = s.ended ? 'Awaiting next item' : `Bid: £${s.bids ? s.price + 1 : s.price}`;
+    c.querySelector('.toast').textContent = s.ended && /won!$/.test(s.status) ? s.status.replace(/won!$/, 'won the auction!') : '';
   }
 
   function nextItem(sameTitle) {

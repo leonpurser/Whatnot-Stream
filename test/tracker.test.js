@@ -20,6 +20,7 @@ function snap(ts, o) {
     status: W.parseStatus(o.status || '', W.PATTERNS),
     nextBid: gbp(o.next),
     currentPrice: gbp(o.price),
+    priceGuess: gbp(o.guess),
     isGiveaway: !!o.giveaway,
   };
 }
@@ -210,4 +211,34 @@ test('chat deduper drops re-mounted duplicates inside the window only', () => {
   assert.equal(d.accept('sarah', 'show the back?', 500), false);
   assert.equal(d.accept('sarah', 'show the back?', 4000), true);
   assert.equal(d.accept('dave', 'show the back?', 4000), true);
+});
+
+test('price from text guess is used but flagged until trusted', () => {
+  const frames = (t) => [
+    [t, { title: 'Premium vintage clothing #23', timer: 2, bids: 3, status: 'altin12345 is Winning!', next: 4, guess: 3 }],
+    [t + 2000, { title: 'Premium vintage clothing #23', bids: 3, status: 'altin12345 won!', guess: 3 }],
+    [t + 2400, { title: 'Premium vintage clothing #23', bids: 3, status: 'altin12345 won!', guess: 3 }],
+  ];
+  let sale = types(run(new W.AuctionTracker(W.TUNING), frames(9_000_000)), 'sale')[0];
+  assert.equal(sale.data.price, 3);
+  assert.equal(sale.data.priceSource, 'text-guess');
+  assert.deepEqual(sale.data.warnings, ['price_is_guess']);
+  assert.equal(sale.data.confidence, 'low');
+
+  sale = types(run(new W.AuctionTracker({ ...W.TUNING, trustPriceGuess: true }), frames(9_000_000)), 'sale')[0];
+  assert.equal(sale.data.price, 3);
+  assert.equal(sale.data.confidence, 'ok');
+});
+
+test('a real selector price beats the text guess', () => {
+  const tr = new W.AuctionTracker(W.TUNING);
+  const t = 10_000_000;
+  const evs = run(tr, [
+    [t, { title: 'Polo', timer: 1, bids: 2, status: 'amy is Winning!', price: 7, guess: 99 }],
+    [t + 1000, { title: 'Polo', bids: 2, status: 'amy won!', price: 7, guess: 99 }],
+    [t + 1400, { title: 'Polo', bids: 2, status: 'amy won!', price: 7, guess: 99 }],
+  ]);
+  const sale = types(evs, 'sale')[0];
+  assert.equal(sale.data.price, 7);
+  assert.equal(sale.data.priceSource, 'price-selector');
 });

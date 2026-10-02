@@ -51,12 +51,30 @@
     return m ? m[1] : null;
   }
 
-  function detectCondition(text, conditions) {
-    const t = normText(text).toLowerCase();
-    // Longest first so "Pre-owned - Good" beats "Pre-owned".
-    const sorted = [...(conditions || [])].sort((a, b) => b.length - a.length);
-    for (const c of sorted) if (t.includes(c.toLowerCase())) return c;
+  // Condition must be a whole text segment ("Vintage"), not a substring of
+  // another segment ("Premium vintage clothing #23"). Accepts an array of
+  // segments or a " | "-joined string.
+  function detectCondition(segs, conditions) {
+    const list = (Array.isArray(segs) ? segs : normText(segs).split(' | ')).map((t) => normText(t).toLowerCase());
+    for (const c of conditions || []) if (list.includes(c.toLowerCase())) return c;
     return null;
+  }
+
+  // Segments that are ONLY a money amount, e.g. "£3". Returns distinct
+  // amounts, noting whether the next segment says "Sold".
+  function findPriceSegments(segs, pattern) {
+    const re = compile(pattern || '^[£$€]\\s?\\d[\\d,]*(?:\\.\\d{1,2})?$');
+    const out = [];
+    segs.forEach((t, i) => {
+      if (!re.test(normText(t))) return;
+      const money = parseMoney(t);
+      if (!money) return;
+      const soldLabel = /^sold$/i.test(normText(segs[i + 1] || '')) || /^sold$/i.test(normText(segs[i - 1] || ''));
+      const existing = out.find((o) => o.money.amount === money.amount && o.money.currency === money.currency);
+      if (existing) existing.soldLabel = existing.soldLabel || soldLabel;
+      else out.push({ money, soldLabel });
+    });
+    return out;
   }
 
   // Status element text -> { kind, user, price }
@@ -105,6 +123,7 @@
     parseBidCount,
     parseLotNumber,
     detectCondition,
+    findPriceSegments,
     parseStatus,
     cleanUser,
     normUser,

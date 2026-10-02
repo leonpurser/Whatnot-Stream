@@ -71,6 +71,8 @@
   function healthText(hs, now) {
     if (hs.state === 'ok') return ['DETECTED', 'ok'];
     if (hs.state === 'not_configured') return ['NOT CONFIGURED', 'grey'];
+    if (hs.state === 'guessed') return ['GUESSED FROM TEXT', 'warn'];
+    if (hs.state === 'ambiguous') return ['AMBIGUOUS (2+ amounts)', 'bad'];
     if (hs.state === 'unparsed') return ['FOUND, CAN’T PARSE', 'bad'];
     if (hs.lastOkAt) return [`NOT NOW (seen ${Math.round((now - hs.lastOkAt) / 1000)}s ago)`, 'warn'];
     return ['NOT DETECTED', 'bad'];
@@ -87,7 +89,7 @@
     const t = new Date(evt.ts).toLocaleTimeString();
     switch (evt.type) {
       case 'sale':
-        return `${t} SALE ${d.item || '?'} → @${d.winner || '?'} ${d.price != null ? d.price : '£?'} [${d.confidence}${d.warnings.length ? ': ' + d.warnings.join(',') : ''}]`;
+        return `${t} SALE @${d.winner || '?'} ${d.price != null ? fmtMoney({ amount: d.price, currency: d.currency }) : '£?'} ${d.item || '?'} [${d.confidence}${d.warnings.length ? ': ' + d.warnings.join(',') : ''}]`;
       case 'sale_suppressed':
         return `${t} DUPLICATE SUPPRESSED @${d.winner || '?'} (${d.reason})`;
       case 'giveaway_result':
@@ -174,7 +176,8 @@
         cur.appendChild(row('Timer', snap && snap.timerText ? `${snap.timerText} (${a.timerSec}s)` : null));
         cur.appendChild(row('Bids', a.bidCount));
         cur.appendChild(row('Leader', a.leader ? '@' + a.leader : null));
-        cur.appendChild(row('Current price', fmtMoney(a.currentPrice) || 'unknown', a.currentPrice ? '' : 'warn'));
+        cur.appendChild(row('Price (selector)', fmtMoney(a.currentPrice) || 'not set up', a.currentPrice ? '' : 'warn'));
+        cur.appendChild(row('Price (text guess)', fmtMoney(a.priceGuess), 'warn'));
         cur.appendChild(row('Next bid (button)', fmtMoney(a.nextBid)));
         cur.appendChild(row('Extensions', a.extensions));
         cur.appendChild(row('Status text', snap && snap.status.text, 'muted'));
@@ -204,10 +207,11 @@
             cb.addEventListener('change', () => { showBids = cb.checked; render(); });
             return cb;
           })(),
-          ' show bids & chat',
+          ' show every update, bid & chat',
         ]),
       ]);
-      const filtered = events.filter((e) => showBids || !['bid', 'leader_changed', 'chat_message', 'probe_status'].includes(e.type)).slice(0, 14);
+      const NOISY = ['auction_update', 'bid', 'leader_changed', 'chat_message', 'probe_status'];
+      const filtered = events.filter((e) => showBids || !NOISY.includes(e.type)).slice(0, 14);
       for (const e of filtered) evs.appendChild(h('div', { class: `ev ${e.type}`, title: JSON.stringify(e.data) }, summarize(e)));
       if (!filtered.length) evs.appendChild(h('div', { class: 'muted' }, 'None yet.'));
       body.appendChild(evs);

@@ -20,6 +20,7 @@
     saleConfirmMs: 300,
     saleDedupWindowMs: 8000,
     extensionJumpSec: 2,
+    trustPriceGuess: false,
   };
 
   function makeEvent(type, ts, auctionId, data) {
@@ -96,6 +97,7 @@
         leader: null,
         nextBid: null,
         currentPrice: null,
+        priceGuess: null,
         isGiveaway: !!s.isGiveaway,
         phase: 'pending',
         sold: false,
@@ -118,6 +120,7 @@
         bids: a.bidCount,
         leader: a.leader,
         price: a.currentPrice ? a.currentPrice.amount : null,
+        priceGuess: a.priceGuess ? a.priceGuess.amount : null,
         nextBid: a.nextBid ? a.nextBid.amount : null,
         currency: (a.currentPrice || a.nextBid || {}).currency || null,
         isGiveaway: a.isGiveaway,
@@ -140,6 +143,7 @@
       if (s.bidCount != null) a.bidCount = s.bidCount;
       if (s.nextBid) a.nextBid = s.nextBid;
       if (s.currentPrice) a.currentPrice = s.currentPrice;
+      if (s.priceGuess) a.priceGuess = s.priceGuess;
       if (s.status.kind === 'leading' && s.status.user) a.leader = s.status.user;
 
       if (s.timerSec != null) {
@@ -223,11 +227,16 @@
       } else if (s.status.price) {
         price = s.status.price;
         priceSource = 'status-text';
+      } else if (s.priceGuess || a.priceGuess) {
+        // Prefer the value on screen at the moment of the win.
+        price = s.priceGuess || a.priceGuess;
+        priceSource = 'text-guess';
       }
 
       const warnings = [];
       if (!winner) warnings.push(s.status.you ? 'winner_is_logged_in_user' : 'winner_unknown');
       if (!price && !a.isGiveaway) warnings.push('price_unknown');
+      if (priceSource === 'text-guess' && !this.t.trustPriceGuess) warnings.push('price_is_guess');
       if (winner && a.leader && P.normUser(winner) !== P.normUser(a.leader)) warnings.push('winner_differs_from_last_leader');
       if (price && a.nextBid && price.amount >= a.nextBid.amount) warnings.push('price_not_below_next_bid');
       if (!a.observedLive) warnings.push('not_observed_live');

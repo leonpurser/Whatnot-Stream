@@ -77,11 +77,15 @@
 
   // Text of every text node under el, joined with a separator, so that
   // "12 Bids" and "00:07" in sibling elements don't merge into "12 Bids00:07".
-  function segmentedText(el, maxLen) {
-    if (!el) return '';
+  // `skip` is a list of elements whose text is ignored (e.g. chat, bid button).
+  function segments(el, maxLen, skip) {
+    if (!el) return [];
     const out = [];
     let len = 0;
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const skipEls = (skip || []).filter(Boolean);
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (skipEls.some((s) => s.contains(n)) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+    });
     let n;
     while ((n = walker.nextNode())) {
       const t = W.normText(n.nodeValue);
@@ -90,7 +94,27 @@
       len += t.length + 3;
       if (maxLen && len > maxLen) break;
     }
-    return out.join(' | ');
+    return out;
+  }
+
+  function segmentedText(el, maxLen, skip) {
+    return segments(el, maxLen, skip).join(' | ');
+  }
+
+  // Until a dedicated price selector is known: look for a text segment that is
+  // ONLY a money amount (e.g. "£3", next to "Sold") in and just around the
+  // product card. "Bid: £4" and "Shipping is £3.27 + Taxes" are not pure
+  // amounts, the bid button and chat are skipped, and if two different
+  // amounts are found the result is "ambiguous" rather than a guess.
+  function guessPrice(card, skip) {
+    let el = card;
+    for (let level = 0; el && el !== document.body && level <= TUN.priceGuessMaxLevels; level++, el = el.parentElement) {
+      const segs = segments(el, 4000, skip);
+      const found = W.findPriceSegments(segs, PAT.priceSegment);
+      if (found.length === 1) return { money: found[0].money, soldLabel: found[0].soldLabel, level };
+      if (found.length > 1) return { ambiguous: found.map((f) => f.money.raw) };
+    }
+    return null;
   }
 
   // Smallest ancestor of the title that also contains the timer/status, i.e.
@@ -117,7 +141,9 @@
     const giveawayEl = q(SEL.giveawayIndicator);
 
     const card = findCardRoot(titleEl || timerEl, [titleEl, timerEl, statusEl]);
-    const cardText = card ? segmentedText(card, 2000) : '';
+    const chatPanelEl = q(SEL.chatPanel);
+    const cardSegs = card ? segments(card, 2000, [chatPanelEl]) : [];
+    const cardText = cardSegs.join(' | ');
 
     const title = txt(titleEl) || null;
     const timerText = txt(timerEl);
@@ -125,8 +151,11 @@
     const status = W.parseStatus(txt(statusEl), PAT);
     const bidBtnText = txt(bidBtnEl);
     const nextBid = bidBtnEl ? W.parseMoney(bidBtnText) : null;
+    const bidBtnIdle = !nextBid && W.compile(PAT.bidButtonIdle).test(bidBtnText);
     const priceText = txt(priceEl);
     const currentPrice = priceEl ? W.parseMoney(priceText) : null;
+    const guess = !currentPrice && card ? guessPrice(card, [chatPanelEl, bidBtnEl, titleEl]) : null;
+    const priceGuess = guess && guess.money ? guess.money : null;
 
     let bidCount = null;
     if (bidCountEl) bidCount = W.parseBidCount(txt(bidCountEl), reBidCount);
@@ -146,7 +175,9 @@
       ts: now,
       title,
       lotNumber: title ? W.parseLotNumber(title, PAT.lotNumber) : null,
-      condition: W.detectCondition(cardText, PAT.conditions),
+      // Exact segment match only, so a title like "Premium vintage clothing"
+      // can't be mistaken for the condition "Vintage".
+      condition: W.detectCondition(cardSegs.filter((t) => t !== title), PAT.conditions),
       imageUrl,
       timerSec,
       timerText,
@@ -154,6 +185,8 @@
       status,
       nextBid,
       currentPrice,
+      priceGuess,
+      priceGuessSoldLabel: !!(guess && guess.soldLabel),
       isGiveaway,
     };
 
@@ -171,10 +204,25 @@
       now
     );
     setHealth('winner', status.kind === 'won' ? (status.user ? 'ok' : 'unparsed') : 'missing', now);
-    setHealth('nextBid', nextBid ? 'ok' : bidBtnText ? 'unparsed' : 'missing', now);
-    setHealth('price', !SEL.currentPrice.length ? 'not_configured' : currentPrice ? 'ok' : priceText ? 'unparsed' : 'missing', now);
+    setHealth('nextBid', nextBid ? 'ok' : bidBtnText && !bidBtnIdle ? 'unparsed' : 'missing', now);
+    if (SEL.currentPrice.length && (currentPrice || priceText)) {
+      setHealth('price', currentPrice ? 'ok' : 'unparsed', now);
+    } else if (priceGuess) {
+      setHealth('price', 'guessed', now);
+    } else if (guess && guess.ambiguous) {
+      setHealth('price', 'ambiguous', now);
+    } else {
+      setHealth('price', SEL.currentPrice.length ? 'missing' : 'not_configured', now);
+    }
 
-    snap.raw = { title, timer: timerText, status: status.text, bidButton: bidBtnText, price: priceText };
+    snap.raw = {
+      title,
+      timer: timerText,
+      status: status.text,
+      bidButton: bidBtnText,
+      price: priceText,
+      priceGuess: guess ? (guess.money ? `${guess.money.raw}${guess.soldLabel ? ' (Sold)' : ''} @level ${guess.level}` : `ambiguous: ${guess.ambiguous.join(', ')}`) : null,
+    };
     return snap;
   }
 
@@ -350,11 +398,15 @@
     const timerEl = q(SEL.timer);
     const statusEl = q(SEL.winningStatus);
     const card = findCardRoot(titleEl || timerEl || statusEl, [titleEl, timerEl, statusEl]);
-    const segments = card ? segmentedText(card, 4000) : '(product card not found)';
-    const testids = card ? [...card.querySelectorAll('[data-testid]')].map((e) => `${e.getAttribute('data-testid')} = "${txt(e).slice(0, 80)}"`) : [];
-    const evt = W.makeEvent('debug_card_text', Date.now(), tracker.auction && tracker.auction.id, { segments, testids });
+    const segText = card ? segmentedText(card, 4000) : '(product card not found)';
+    // On the real page the "£3 Sold" label sits visually outside the card, so
+    // also dump two levels up (chat excluded).
+    const outer = card && card.parentElement && card.parentElement.parentElement;
+    const outerText = outer ? segmentedText(outer, 4000, [q(SEL.chatPanel)]) : '';
+    const testids = (outer || card) ? [...(outer || card).querySelectorAll('[data-testid]')].filter((e) => !e.closest('[data-testid="chat-message"]')).map((e) => `${e.getAttribute('data-testid')} = "${txt(e).slice(0, 80)}"`) : [];
+    const evt = W.makeEvent('debug_card_text', Date.now(), tracker.auction && tracker.auction.id, { segments: segText, outerSegments: outerText, testids });
     emit(evt);
-    console.info('[WNSC] card text:\n' + segments + '\n\n' + testids.join('\n'));
+    console.info('[WNSC] card text:\n' + segText + '\n\nAROUND CARD:\n' + outerText + '\n\n' + testids.join('\n'));
     return evt;
   }
 

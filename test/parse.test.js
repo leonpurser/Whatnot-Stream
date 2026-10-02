@@ -23,7 +23,7 @@ test('parseBidCount / lot / condition', () => {
   assert.equal(W.parseBidCount('1 Bid', W.PATTERNS.bidCount), 1);
   assert.equal(W.parseBidCount('Bid: £24', W.PATTERNS.bidCount), null);
   assert.equal(W.parseLotNumber('ITEM ON SCREEN •No Cancellations• #348'), '348');
-  assert.equal(W.detectCondition('Vintage | New With Tags | 12 Bids', W.PATTERNS.conditions), 'New With Tags');
+  assert.equal(W.detectCondition('Nike Hoodie | New With Tags | 12 Bids', W.PATTERNS.conditions), 'New With Tags');
   assert.equal(W.detectCondition('Pre-owned - Good', W.PATTERNS.conditions), 'Pre-owned - Good');
 });
 
@@ -42,4 +42,25 @@ test('parseStatus', () => {
   assert.equal(W.parseStatus('No bids', W.PATTERNS).kind, 'no_sale');
   assert.equal(W.parseStatus('', W.PATTERNS).kind, 'none');
   assert.equal(W.parseStatus('Something new', W.PATTERNS).kind, 'unknown');
+});
+
+test('detectCondition only matches whole segments', () => {
+  const C = W.PATTERNS.conditions;
+  // From a real show: title contains "vintage", condition segment is "Vintage".
+  assert.equal(W.detectCondition(['Premium vintage clothing #23', 'Vintage', '3 Bids'], C), 'Vintage');
+  assert.equal(W.detectCondition(['Premium vintage clothing #23', '3 Bids'], C), null);
+  assert.equal(W.detectCondition('Hat | New With Tags | 1 Bid', C), 'New With Tags');
+});
+
+test('findPriceSegments picks pure amounts only', () => {
+  const P = W.PATTERNS.priceSegment;
+  // Segments as seen on a real show after a sale.
+  const segs = ['Premium vintage clothing #23', 'Vintage', '3 Bids', 'Shipping is £3.27 + Taxes', '£3', 'Sold'];
+  const found = W.findPriceSegments(segs, P);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].money.amount, 3);
+  assert.equal(found[0].soldLabel, true);
+  assert.equal(W.findPriceSegments(['Bid: £4', 'Shipping is £3.27 + Taxes'], P).length, 0);
+  assert.equal(W.findPriceSegments(['£3', '£5'], P).length, 2);
+  assert.equal(W.findPriceSegments(['£3', '£3'], P).length, 1);
 });
