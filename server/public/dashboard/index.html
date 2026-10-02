@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Show Control</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">SHOW CONTROL</div>
+  <div id="mode" class="mode">LIVE</div>
+  <div id="showname" class="muted"></div>
+  <div class="spacer"></div>
+  <div id="onair" class="onair">OFF AIR</div>
+  <button class="danger big" data-cue="clear" title="Clear every graphic now">CLEAR ALL</button>
+</header>
+
+<div id="lights" class="lights"></div>
+<div id="banner" class="banner" hidden></div>
+
+<main>
+  <!-- column 1 -->
+  <section class="col">
+    <div class="card">
+      <h2>Current auction</h2>
+      <div id="auction"></div>
+    </div>
+
+    <div class="card">
+      <h2>Graphics</h2>
+      <div class="btns">
+        <button data-cue="sold_last">SOLD (last sale)</button>
+        <button data-cue="item_intro">NEXT UP (item)</button>
+        <button data-cue="top_buyers">TOP BUYERS</button>
+        <button data-cue="stats">SHOW STATS</button>
+        <button data-cue="new_leader">LEADER</button>
+        <button data-cue="bidding_war">BIDDING WAR</button>
+        <button data-cue="overtime">OVERTIME</button>
+        <button data-cue="giveaway">GIVEAWAY</button>
+        <button data-cue="chat_clear">CLEAR CHAT</button>
+        <button class="warn" data-action="end-show">END SHOW</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Segments</h2>
+      <div id="segments" class="btns"></div>
+    </div>
+
+    <div class="card">
+      <h2>Manual sale <span class="muted">(fallback if the probe misses one)</span></h2>
+      <form id="manual" class="form">
+        <input name="winner" placeholder="username" autocomplete="off" required>
+        <input name="price" placeholder="price" inputmode="decimal" autocomplete="off">
+        <input name="item" placeholder="item (blank = current)" autocomplete="off">
+        <label><input type="checkbox" name="air" checked> put on air</label>
+        <button type="submit">ADD SALE</button>
+      </form>
+    </div>
+
+    <div class="card" id="testcard" hidden>
+      <h2>Rehearsal / test events</h2>
+      <div class="btns" id="testbtns">
+        <button data-test="start">New auction</button>
+        <button data-test="bid">Bid</button>
+        <button data-test="war">Bidding war</button>
+        <button data-test="extend">Extend</button>
+        <button data-test="sale">Sale</button>
+        <button data-test="big">Big sale</button>
+        <button data-test="record">Record sale</button>
+        <button data-test="hattrick">Hat trick (3 sales)</button>
+        <button data-test="lowconf">Unsure sale</button>
+        <button data-test="giveaway">Giveaway win</button>
+        <button data-test="chat">Chat message</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- column 2 -->
+  <section class="col">
+    <div class="card" id="reviewcard" hidden>
+      <h2 class="warn-t">Needs review</h2>
+      <div id="review"></div>
+    </div>
+
+    <div class="card">
+      <h2>Show</h2>
+      <div id="stats" class="stats"></div>
+    </div>
+
+    <div class="card grow">
+      <h2>Sales</h2>
+      <div id="sales" class="scroll"></div>
+    </div>
+  </section>
+
+  <!-- column 3 -->
+  <section class="col">
+    <div class="card">
+      <h2>Top buyers <span class="muted">(spend is private)</span></h2>
+      <div id="board"></div>
+    </div>
+
+    <div class="card grow">
+      <h2>Chat <span class="muted">(nothing airs unless you press ON AIR)</span></h2>
+      <div id="chat" class="scroll"></div>
+    </div>
+
+    <div class="card">
+      <h2>Log</h2>
+      <div id="notices" class="scroll small"></div>
+    </div>
+  </section>
+</main>
+
+<details class="card settings">
+  <summary>Settings &amp; show</summary>
+  <div class="settings-grid">
+    <div>
+      <h3>Automatic graphics</h3>
+      <div id="toggles"></div>
+    </div>
+    <div>
+      <h3>Show</h3>
+      <div class="btns">
+        <button data-action="rehearsal">Toggle REHEARSAL mode</button>
+        <button class="warn" data-action="new-show">Start NEW show</button>
+      </div>
+      <p class="muted">Rehearsal mode enables the test buttons and keeps rehearsal sales separate (never saved). A new show resets the counters and leaderboard; old shows stay in <code>data/shows/</code>.</p>
+      <h3>Links</h3>
+      <p><a href="/overlay/?bg=1" target="_blank">Overlay preview</a> · <a href="/overlay/?demo=1" target="_blank">Graphics demo</a> · <a href="/overlay/?safe=1&amp;bg=1" target="_blank">Safe areas</a> · <a href="/api/companion" target="_blank">Companion JSON</a></p>
+    </div>
+  </div>
+</details>
+
+<div id="toast" class="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

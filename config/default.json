@@ -1,0 +1,83 @@
+{
+  "_readme": "Defaults. Don't edit this file: copy any keys you want to change into config/local.json (same structure). Toggles changed from the dashboard are saved in data/settings.json.",
+
+  "host": "127.0.0.1",
+  "port": 3000,
+  "currency": "GBP",
+
+  "autoAir": {
+    "sales": true,
+    "buyerMilestones": true,
+    "newLeader": true,
+    "showMilestones": true,
+    "biddingWar": true,
+    "overtime": false,
+    "itemIntro": false,
+    "giveawayWinner": true
+  },
+
+  "trustPriceGuess": false,
+  "airSalesWithoutPrice": true,
+
+  "thresholds": {
+    "bigSale": 25,
+    "recordMinSales": 3,
+    "recordMinPrice": 10,
+    "buyerMilestones": { "3": "HAT TRICK", "5": "HIGH FIVE", "10": "DOUBLE DIGITS", "15": "ON FIRE", "20": "LEGEND" },
+    "showMilestones": [10, 25, 50, 75, 100, 150, 200, 300],
+    "newLeaderMinItems": 2,
+    "biddingWarBids": 4,
+    "biddingWarWindowMs": 10000,
+    "duplicateWindowMs": 8000,
+    "reloadDuplicateWindowMs": 1800000,
+    "leaderboardSize": 5
+  },
+
+  "durations": {
+    "sold": 2400,
+    "big_sale": 3200,
+    "new_record": 4800,
+    "buyer_milestone": 3000,
+    "new_leader": 3200,
+    "show_milestone": 3000,
+    "bidding_war": 2200,
+    "overtime": 1600,
+    "item_intro": 4000,
+    "giveaway": 5000,
+    "giveaway_winner": 4000,
+    "segment": 5000,
+    "stats": 8000,
+    "top_buyers": 9000,
+    "end_show": 24000,
+    "chat": 15000
+  },
+
+  "segments": [
+    { "id": "pound_madness", "title": "£1 MADNESS", "subtitle": "10 ITEMS • £1 STARTS", "color": "#ff2d55" },
+    { "id": "mystery", "title": "MYSTERY BUNDLES", "subtitle": "WHAT'S INSIDE?", "color": "#7c4dff" }
+  ],
+
+  "brand": {
+    "showName": "",
+    "accent": "#ffd400",
+    "font": "Anton"
+  },
+
+  "layout": {
+    "_readme": "Vertical centre of the main graphics on the 1080x1920 canvas. Open /overlay?safe=1 to see the approximate Whatnot UI areas.",
+    "centerY": 640,
+    "chatY": 1020
+  },
+
+  "privacy": {
+    "hiddenBuyers": [],
+    "hiddenLabel": "A LUCKY BUYER"
+  },
+
+  "audio": {
+    "enabled": true,
+    "volume": 0.5,
+    "_readme": "Map a cue name to a file in server/public/assets/audio/ to replace the built-in synth sting, e.g. \"sold\": \"sold.mp3\". Set a cue to false to silence it.",
+    "files": {}
+  }
+}

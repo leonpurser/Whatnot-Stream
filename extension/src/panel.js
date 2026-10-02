@@ -157,6 +157,21 @@
       const body = h('div', { class: `body${collapsed ? ' collapsed' : ''}` });
       wrap.appendChild(body);
 
+      // Server link
+      const SERVER_TXT = {
+        connected: ['CONNECTED', 'ok'],
+        offline: ['OFFLINE (is the server running?)', 'bad'],
+        unknown: ['WAITING…', 'warn'],
+        'no-extension': ['EXTENSION NOT RESPONDING', 'bad'],
+        'reload-tab': ['EXTENSION RELOADED: REFRESH THIS TAB', 'bad'],
+      };
+      const [stxt, scls] = SERVER_TXT[s.server.state] || SERVER_TXT.unknown;
+      const link = h('section', {}, [h('h4', {}, 'Show Control server')]);
+      link.appendChild(row('Server', stxt, scls));
+      if (s.server.queued) link.appendChild(row('Waiting to send', s.server.queued, 'warn'));
+      if (s.hidden) link.appendChild(row('This tab', 'HIDDEN: keep it visible!', 'bad'));
+      body.appendChild(link);
+
       // Health
       const hs = h('section', {}, [h('h4', {}, `Detection — selectors ${s.selectorsVersion}`)]);
       for (const f of s.fields) {

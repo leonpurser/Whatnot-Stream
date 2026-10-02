@@ -1,9 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Whatnot Show Control – DOM Probe",
-  "version": "0.1.0",
-  "description": "Phase 1 probe: reads the visible Whatnot show page (read-only) and reports auction, sale and chat state.",
-  "permissions": [],
+  "name": "Whatnot Show Control \u2013 Probe",
+  "version": "0.2.0",
+  "description": "Reads the visible Whatnot show page (read-only) and sends auction, sale and chat events to the local Show Control server.",
   "content_scripts": [
     {
       "matches": [
@@ -19,5 +18,11 @@
       ],
       "run_at": "document_idle"
     }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "host_permissions": [
+    "http://127.0.0.1:3000/*"
   ]
 }

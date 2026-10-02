@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Show Overlay</title>
+<!--
+  OBS Browser Source: http://127.0.0.1:3000/overlay/  width 1080, height 1920,
+  tick "Control audio via OBS". Transparent unless a graphic is playing.
+
+  URL options:
+    ?safe=1   show approximate Whatnot UI safe areas
+    ?demo=1   play every graphic with sample data on a loop (no server needed)
+    ?bg=1     checkerboard background for previewing in a normal browser
+    ?mute=1   no sound
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+<div id="stage">
+  <div id="safe" hidden></div>
+  <canvas id="fx" width="1080" height="1920"></canvas>
+  <div id="main"></div>
+  <div id="chat"></div>
+  <div id="status"></div>
+</div>
+<script src="overlay.js"></script>
+</body>
+</html>

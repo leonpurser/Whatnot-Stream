@@ -282,13 +282,53 @@
   // ---------------------------------------------------------------- events
   function emit(evt) {
     evt.seq = ++seq;
+    // The server only accepts mock-page events in REHEARSAL mode.
+    if (isMock) evt.source = 'mock';
     log.push(evt);
     if (log.length > TUN.maxLogEntries) log.splice(0, log.length - TUN.maxLogEntries);
     if (evt.type !== 'auction_update' && evt.type !== 'chat_message') {
       console.info('[WNSC]', evt.type, evt.data);
     }
     panel.onEvent(evt);
-    // PHASE 2: chrome.runtime.sendMessage({ kind: 'wnsc-event', event: evt });
+    send({ kind: 'wnsc-event', event: evt });
+  }
+
+  // ---------------------------------------------------------------- server link
+  // Events go to the extension's background worker, which POSTs them to the
+  // local show server. `server` is what the panel shows.
+  const server = { state: 'unknown', queued: 0, lastOkAt: 0 };
+  function send(msg) {
+    try {
+      if (!chrome.runtime || !chrome.runtime.id) throw new Error('invalidated');
+      chrome.runtime.sendMessage(msg, (resp) => {
+        if (chrome.runtime.lastError) {
+          server.state = 'no-extension';
+          return;
+        }
+        if (resp) {
+          server.state = resp.server;
+          server.queued = resp.queued;
+          server.lastOkAt = resp.lastOkAt;
+        }
+      });
+    } catch (e) {
+      // Extension was reloaded: this old copy can't talk to it any more.
+      server.state = 'reload-tab';
+    }
+  }
+
+  function heartbeat() {
+    send({
+      kind: 'wnsc-event',
+      event: Object.assign(
+        W.makeEvent('probe_heartbeat', Date.now(), tracker.auction && tracker.auction.id, {
+          health: healthSummary(),
+          selectorsVersion: SEL.version,
+          visible: document.visibilityState === 'visible',
+        }),
+        isMock ? { source: 'mock' } : {}
+      ),
+    });
   }
 
   function healthSummary() {
@@ -358,6 +398,7 @@
       chatDirty = true;
       scheduleRead();
     }, TUN.heartbeatMs);
+    setInterval(heartbeat, 5000);
     emit(
       W.makeEvent('probe_started', Date.now(), null, {
         selectorsVersion: SEL.version,
@@ -435,6 +476,8 @@
       mock: isMock,
       selectorsVersion: SEL.version,
       invalidSelectors: [...invalidSelectors],
+      server,
+      hidden: document.visibilityState !== 'visible',
     }),
     actions: {
       exportLog,
