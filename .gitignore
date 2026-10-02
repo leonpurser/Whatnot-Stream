@@ -3,3 +3,5 @@ node_modules/
 wnsc-probe-*.json
 data/
 .DS_Store
+companion-module/pkg/
+companion-module/*.tgz

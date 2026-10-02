@@ -41,6 +41,7 @@
     const items = [];
     items.push([r.connected ? 'ok' : 'bad', 'WHATNOT', r.connected ? (r.mock ? 'connected (mock page)' : 'connected') : `offline (${ago(r.lastSeenTs)})`]);
     items.push([c.overlays > 0 ? 'ok' : 'bad', 'OBS GRAPHICS', c.overlays > 0 ? `${c.overlays} connected` : 'not connected']);
+    items.push([c.companion > 0 ? 'ok' : 'grey', 'STREAM DECK', c.companion > 0 ? 'connected' : 'not connected']);
     const h = (r.connected && r.health) || {};
     for (const [k, label] of Object.entries(HEALTH_LABELS)) {
       const st = h[k];
@@ -289,53 +290,8 @@
   });
 
   // ------------------------------------------------------------------ rehearsal events
-  const USERS = ['sarah_k', 'dave.thrifts', 'ben_vintage', 'lucy88', 'tomtom', 'amy_resells', 'dommy31', 'altin12345'];
-  const ITEMS = ['Vintage Nike Sweatshirt', 'Lacoste Polo Size M', 'Levis 501 W32', 'Ralph Lauren Oxford', 'Carhartt Detroit Jacket', 'Stone Island Overshirt', 'Patagonia Fleece'];
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
-  let lot = 300;
-  let ta = null;
-  const ev = (type, data, extra) => Object.assign({ v: 1, type, ts: Date.now(), source: 'test', auctionId: ta ? ta.id : null, data }, extra || {});
-  function newAuction() {
-    lot += 1;
-    ta = { id: `t${Date.now().toString(36)}${lot}`, item: `${pick(ITEMS)} #${lot}`, bids: 0, leader: null, price: 1 };
-    return ev('auction_start', { item: ta.item, lotNumber: String(lot), condition: 'Vintage', phase: 'live', timerSec: 15, bids: 0 });
-  }
-  function bidEv(dt) {
-    ta.bids += 1;
-    ta.price += 1;
-    ta.leader = pick(USERS.filter((u) => u !== ta.leader));
-    return [
-      ev('bid', { bids: ta.bids, delta: 1, leader: ta.leader, nextBid: ta.price + 1 }, { ts: Date.now() + (dt || 0) }),
-      ev('auction_update', { item: ta.item, phase: 'live', timerSec: 8, bids: ta.bids, leader: ta.leader, priceGuess: ta.price, nextBid: ta.price + 1 }),
-    ];
-  }
-  function saleEv(winner, price, warnings) {
-    const start = newAuction();
-    return [start, ev('sale', { item: ta.item, lotNumber: String(lot), winner, price, currency: S.currency, priceSource: 'test', warnings: warnings || [], confidence: warnings && warnings.length ? 'low' : 'ok', observedLive: true })];
-  }
-
   async function testEvent(kind) {
-    const highest = S.summary.highestSale ? S.summary.highestSale.price || 0 : 0;
-    let events = [];
-    if (!ta && ['bid', 'war', 'extend'].includes(kind)) events.push(newAuction());
-    switch (kind) {
-      case 'start': events.push(newAuction()); break;
-      case 'bid': events.push(...bidEv()); break;
-      case 'war': for (let i = 0; i < 5; i++) events.push(...bidEv(i * 300)); break;
-      case 'extend': events.push(ev('auction_extended', { fromSec: 3, toSec: 10, extensions: 1 })); break;
-      case 'sale': events.push(...saleEv(pick(USERS), 3 + Math.floor(Math.random() * 15))); break;
-      case 'big': events.push(...saleEv(pick(USERS), Math.max(S.settings.bigSale, 25) + Math.floor(Math.random() * 10))); break;
-      case 'record': events.push(...saleEv(pick(USERS), Math.max(highest + 5, 12))); break;
-      case 'hattrick': {
-        const u = pick(USERS);
-        for (let i = 0; i < 3; i++) events.push(...saleEv(u, 4 + i));
-        break;
-      }
-      case 'lowconf': events.push(...saleEv(pick(USERS), 9, ['winner_differs_from_last_leader'])); break;
-      case 'giveaway': events.push(newAuction(), ev('giveaway_result', { item: 'GIVEAWAY - Beanie', winner: pick(USERS) })); break;
-      case 'chat': events.push(ev('chat_message', { id: `tc${Date.now()}`, user: pick(USERS), text: pick(['Can you show the back?', 'What size is it?', 'Pit to pit?', 'lets gooo', 'bundle?']) })); break;
-    }
-    await post('/api/test/events', { events });
+    await post(`/api/test/${kind}`);
   }
 
   // ------------------------------------------------------------------ connection

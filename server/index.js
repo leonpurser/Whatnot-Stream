@@ -104,6 +104,7 @@ function createServer({ dataDir = DATA } = {}) {
     'POST /api/sale/manual': (b) => ({ sale: app.manualSale(b) }),
     'POST /api/chat/air': (b) => app.airChat(b.id),
     'POST /api/chat/clear': () => app.manualCue('chat_clear'),
+    'POST /api/chat/air-slot': (b, q) => app.airChatSlot(b.slot || q.get('slot')),
     'POST /api/clear': () => app.manualCue('clear'),
     'POST /api/overlay/ack': (b) => (app.overlayAck(b), { ok: true }),
     'GET /api/state': () => app.buildState(),
@@ -118,13 +119,19 @@ function createServer({ dataDir = DATA } = {}) {
       if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' });
 
       if (req.method === 'GET' && p === '/events') {
-        const role = ['overlay', 'dashboard'].includes(url.searchParams.get('role')) ? url.searchParams.get('role') : 'dashboard';
+        const role = ['overlay', 'dashboard', 'companion'].includes(url.searchParams.get('role')) ? url.searchParams.get('role') : 'dashboard';
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
         res.write('retry: 1000\n\n');
         const c = app.addClient(res, role);
         const ka = setInterval(() => res.write(': ka\n\n'), 15000);
         res.on('close', () => clearInterval(ka));
         return c;
+      }
+
+      const testMatch = p.match(/^\/api\/test\/([a-z]+)$/);
+      if (req.method === 'POST' && testMatch && testMatch[1] !== 'events') {
+        await readBody(req).catch(() => ({}));
+        return json(res, 200, app.testEvent(testMatch[1]));
       }
 
       // Companion-friendly: POST /api/cue/<name>?id=<segment>

@@ -81,30 +81,51 @@ Sales count towards stats and the leaderboard straight away, whether or not they
 
 ## Stream Deck / Bitfocus Companion
 
-Use Companion's **Generic HTTP** module and create **POST** actions. No body is needed.
+There's a proper Companion module in `companion-module/`. It has actions for everything, buttons that change colour live, show-data variables, and ready-made button presets.
 
-| Button | URL |
-|---|---|
-| Air waiting sale | `http://127.0.0.1:3000/api/cue/air_review` |
-| Don't air waiting sale | `http://127.0.0.1:3000/api/cue/dismiss_review` |
-| SOLD (last sale again) | `http://127.0.0.1:3000/api/cue/sold_last` |
-| Top buyers | `http://127.0.0.1:3000/api/cue/top_buyers` |
-| Show stats | `http://127.0.0.1:3000/api/cue/stats` |
-| Current leader | `http://127.0.0.1:3000/api/cue/new_leader` |
-| Next up (current item) | `http://127.0.0.1:3000/api/cue/item_intro` |
-| Bidding war | `http://127.0.0.1:3000/api/cue/bidding_war` |
-| Overtime | `http://127.0.0.1:3000/api/cue/overtime` |
-| Giveaway | `http://127.0.0.1:3000/api/cue/giveaway` |
-| £1 Madness | `http://127.0.0.1:3000/api/cue/segment?id=pound_madness` |
-| End segment | `http://127.0.0.1:3000/api/cue/segment_end` |
-| Clear chat bubble | `http://127.0.0.1:3000/api/cue/chat_clear` |
-| **CLEAR ALL** | `http://127.0.0.1:3000/api/cue/clear` |
-| End show recap | `http://127.0.0.1:3000/api/show/end` |
+### Install the module (once)
 
-For button feedback, `GET http://127.0.0.1:3000/api/companion` returns simple JSON:
-- `itemsSold`, `topBuyer`, `biggestSale`, `lastSale`;
-- `needsReview`, the number of sales waiting;
-- `readerConnected`, `overlayConnected`, `onAir`.
+**Companion 4.0 or newer:**
+1. Open the Companion web UI and go to **Modules**.
+2. Use **Import module package** and pick `companion-module\release\whatnot-show-control-0.1.0.tgz`.
+
+**Companion 3.5 (or if the import option isn't there):**
+1. In the Companion launcher window, click the ⚙️ settings cog.
+2. Set **Developer modules path** to the `companion-module\release\dev-modules` folder.
+3. Restart Companion.
+
+Then go to **Connections** and add **Whatnot Show Control**. Keep host `127.0.0.1` and port `3000`, and name the connection `whatnot`. The dashboard's **STREAM DECK** light turns green.
+
+### Build your page
+
+Open the **Presets** tab of the connection and drag buttons onto your Stream Deck. Here's a good first 15-key page:
+
+| | | | | |
+|---|---|---|---|---|
+| **AIR** (waiting sale) | DON'T AIR | SOLD AGAIN | TOP BUYERS | SHOW STATS |
+| LEADER | NEXT UP | BIDDING WAR | GIVEAWAY | £1 MADNESS |
+| CHAT 1 | CHAT 2 | CLEAR CHAT | WHATNOT / OBS status | **CLEAR ALL** |
+
+How the buttons behave:
+- **AIR** shows the waiting buyer and price, and turns **amber** when a sale needs you.
+- Graphic buttons turn **red while on air**.
+- Status buttons are green when connected and red when not.
+- Settings buttons are green when on.
+
+A second page could hold the Rehearsal presets (MODE plus fake sale, big sale, record, hat trick and chat), so you can rehearse from the deck. A third could hold the Settings toggles and END SHOW / NEW SHOW.
+
+**Variables** you can put on any button: `$(whatnot:items_sold)`, `$(whatnot:top_buyer)`, `$(whatnot:current_item)`, `$(whatnot:current_price)`, `$(whatnot:leader_1_user)` and more. They're all listed in the module's help page in Companion.
+
+### Without the module
+
+Every action is also a plain web address, so Companion's Generic HTTP module works too. Make a **POST** to `http://127.0.0.1:3000/api/cue/<name>` where `<name>` is one of:
+- `air_review`, `dismiss_review`, `sold_last`;
+- `top_buyers`, `stats`, `new_leader`, `item_intro`;
+- `bidding_war`, `overtime`, `giveaway`;
+- `segment?id=pound_madness`, `segment_end`;
+- `chat_clear`, `clear`.
+
+End the show with a POST to `http://127.0.0.1:3000/api/show/end`. Live values are at `GET http://127.0.0.1:3000/api/companion`.
 
 ## Changing things
 

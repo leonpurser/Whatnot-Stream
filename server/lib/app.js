@@ -6,6 +6,7 @@ const path = require('node:path');
 const W = require('../../extension/src/parse.js');
 const { ShowStore } = require('./store');
 const R = require('./rules');
+const { TestEvents } = require('./testEvents');
 
 const READER_TIMEOUT_MS = 12000;
 const MAX_CHAT = 150;
@@ -41,6 +42,7 @@ class App {
     this.cueHistory = [];
     this.onAir = null;
     this.clients = new Set();
+    this.testEvents = new TestEvents();
     this._stateTimer = null;
     this._tick = setInterval(() => this.pushState(), 2000);
     if (this._tick.unref) this._tick.unref();
@@ -138,6 +140,26 @@ class App {
     return accepted;
   }
 
+  // REHEARSAL-only fake events (dashboard + Stream Deck test buttons).
+  testEvent(kind) {
+    if (this.mode !== 'rehearsal') throw new Error('Switch to REHEARSAL mode to use test events');
+    const sum = this.store().summary();
+    const events = this.testEvents.build(kind, {
+      highest: sum.highestSale ? sum.highestSale.price || 0 : 0,
+      bigSale: this.cfg.thresholds.bigSale,
+      currency: this.cfg.currency,
+    });
+    return { accepted: this.ingest(events, { test: true }) };
+  }
+
+  // Air a chat message by position (1 = newest), for Stream Deck chat buttons.
+  airChatSlot(slot) {
+    const list = this.chat.slice().reverse();
+    const m = list[Math.max(0, (parseInt(slot, 10) || 1) - 1)];
+    if (!m) throw new Error('no chat message in that slot');
+    return this.airChat(m.id);
+  }
+
   _auctionEntry(id) {
     if (!id) return { bids: [], war: false, overtime: false };
     let e = this.auctions.get(id);
@@ -225,6 +247,9 @@ class App {
 
   _onSale(evt, store, test) {
     const d = evt.data;
+    if (this.currentAuction && evt.auctionId && this.currentAuction.auctionId === evt.auctionId) {
+      this.currentAuction.phase = this.currentAuction.isGiveaway ? 'giveaway_done' : 'sold';
+    }
     const cfg = this.cfg;
     const t = cfg.thresholds;
     const now = evt.ts || Date.now();
@@ -431,6 +456,7 @@ class App {
       this.scheduleState();
     });
     if (role === 'overlay') this._send(c, 'hello', this.overlayConfig());
+    // dashboards and Companion both receive full state
     else this._send(c, 'state', this.buildState());
     this.scheduleState();
     return c;
@@ -468,8 +494,10 @@ class App {
   }
 
   pushState() {
-    if (!this.count('dashboard')) return;
-    this.broadcast('dashboard', 'state', this.buildState());
+    if (!this.count('dashboard') && !this.count('companion')) return;
+    const st = this.buildState();
+    this.broadcast('dashboard', 'state', st);
+    this.broadcast('companion', 'state', st);
   }
 
   notice(level, text) {
@@ -527,6 +555,7 @@ class App {
         },
         overlays: this.count('overlay'),
         dashboards: this.count('dashboard'),
+        companion: this.count('companion'),
       },
       onAir: this.onAir,
       cues: this.cueHistory.slice(-12).reverse(),

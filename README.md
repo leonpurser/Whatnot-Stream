@@ -27,4 +27,4 @@ npm run mock   # offline mock Whatnot show at http://localhost:5179/mock/ (use w
 | 4 Show memory (buyers, records, milestones) | Built |
 | 5 Graphics package | First version (all graphics from the brief) |
 | 6 NVIDIA depth | Not started |
-| 7 Companion | HTTP API built; buttons listed in SHOW-DAY.md |
+| 7 Companion | Companion module with actions, feedbacks, variables and presets (`companion-module/`) |

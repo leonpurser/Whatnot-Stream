@@ -1,0 +1,21 @@
+{
+  "name": "whatnot-show-control",
+  "version": "0.1.0",
+  "description": "Bitfocus Companion module for Whatnot Show Control",
+  "main": "src/main.js",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "package": "companion-module-build",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": "^22.8"
+  },
+  "dependencies": {
+    "@companion-module/base": "~1.11.3"
+  },
+  "devDependencies": {
+    "@companion-module/tools": "~2.3.0"
+  }
+}
