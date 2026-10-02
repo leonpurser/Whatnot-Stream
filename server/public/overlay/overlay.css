@@ -32,6 +32,8 @@ body.bg { background: repeating-conic-gradient(#3a3a3a 0 25%, #2a2a2a 0 50%) 0 0
 @keyframes gKill { to { opacity: 0; } }
 
 .display { font-family: var(--display); text-transform: uppercase; line-height: .92; letter-spacing: .01em; }
+/* single-line headings; overlay.js shrinks them to fit */
+.slab, .price, .rainbow, .war .txt, .panel h1, .end .thanks, .end .bigNum { white-space: nowrap; }
 
 /* skewed slab label */
 .slab {
@@ -157,7 +159,7 @@ body.bg { background: repeating-conic-gradient(#3a3a3a 0 25%, #2a2a2a 0 50%) 0 0
 .prow .name { flex: 1; text-align: left; font: 900 54px var(--ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .prow .val { font-family: var(--display); font-size: 80px; color: var(--accent); }
 .prow .lbl { flex: 1; text-align: left; font: 800 34px var(--ui); color: #bbb; letter-spacing: .08em; text-transform: uppercase; }
-.prow .big { font-family: var(--display); font-size: 84px; color: var(--white); text-align: right; }
+.prow .big { font-family: var(--display); font-size: 84px; color: var(--white); text-align: right; max-width: 540px; overflow: hidden; white-space: nowrap; }
 .prow .big small { display: block; font: 800 32px var(--ui); color: var(--accent); }
 
 /* ------------------------------------------------------------------ end show */

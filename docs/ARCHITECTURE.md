@@ -1,6 +1,8 @@
 # Whatnot Show Control: architecture review and plan
 
-Status: Phase 1 (DOM probe) built. Phases 2–7 are designed here but not built yet.
+Status: Phases 1–5 have a first working version (probe, server, dashboard, overlay, Companion API) for the first live test. Phase 6 (NVIDIA depth) is not started. See [`SHOW-DAY.md`](SHOW-DAY.md) for setup.
+
+> **Change from the original plan.** The transport is plain HTTP POST plus Server-Sent Events rather than WebSockets, so the server has **zero dependencies**: nothing to `npm install` on the broadcast PC. OBS browser sources, the dashboard and the extension all support it, and the browsers reconnect automatically.
 
 ## 1. Verdict
 

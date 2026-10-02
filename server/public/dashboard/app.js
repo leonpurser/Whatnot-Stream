@@ -8,7 +8,7 @@
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
-  const time = (ts) => (ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '');
+  const time = (ts) => (ts ? new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '');
   const ago = (ts) => (ts ? `${Math.max(0, Math.round((Date.now() - ts) / 1000))}s ago` : 'never');
 
   function toast(msg, err) {
@@ -39,7 +39,7 @@
     const c = S.connections;
     const r = c.reader;
     const items = [];
-    items.push([r.connected ? 'ok' : 'bad', 'WHATNOT', r.connected ? 'connected' : `offline (${ago(r.lastSeenTs)})`]);
+    items.push([r.connected ? 'ok' : 'bad', 'WHATNOT', r.connected ? (r.mock ? 'connected (mock page)' : 'connected') : `offline (${ago(r.lastSeenTs)})`]);
     items.push([c.overlays > 0 ? 'ok' : 'bad', 'OBS GRAPHICS', c.overlays > 0 ? `${c.overlays} connected` : 'not connected']);
     const h = (r.connected && r.health) || {};
     for (const [k, label] of Object.entries(HEALTH_LABELS)) {

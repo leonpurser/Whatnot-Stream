@@ -62,7 +62,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
 .stat { background: #0f1116; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
-.stat b { display: block; font-size: 22px; }
+.stat { min-width: 0; }
+.stat b { display: block; font-size: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stat span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 
 .sale { display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: center; padding: 7px 4px; border-bottom: 1px solid var(--line); }

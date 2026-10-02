@@ -167,3 +167,12 @@ test('HTTP: other websites are blocked, Companion-style calls work', async () =>
   app.close();
   await new Promise((r2) => server.close(r2));
 });
+
+test('air_review cue airs the newest sale waiting for review', () => {
+  const { app, cues } = makeApp();
+  app.ingest([sale('amy', 3, { data: { item: 'A', winner: 'amy', price: 3, warnings: ['price_is_guess'], observedLive: true } })]);
+  assert.equal(cues.length, 0);
+  app.manualCue('air_review');
+  assert.equal(cues[0].name, 'sold');
+  assert.throws(() => app.manualCue('air_review'));
+});

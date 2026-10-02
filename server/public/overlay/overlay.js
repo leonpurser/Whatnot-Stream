@@ -50,6 +50,26 @@
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // Shrink one-line headings until they fit the 900px safe column (long
+  // usernames, custom segment titles, fallback fonts).
+  const FIT = '.slab, .price, .rainbow, .war .txt, .panel h1, .thanks, .bigNum, .pill, .caption, .prow .big, .prow .name';
+  function fitAll(root) {
+    // Inline blocks grow with their text, so cap them at 880px; block / capped
+    // elements overflow, so compare against their own width.
+    const over = (e) => e.scrollWidth > Math.min(880, e.clientWidth || 880) + 1;
+    const doFit = () =>
+      root.querySelectorAll(FIT).forEach((e) => {
+        let size = parseFloat(getComputedStyle(e).fontSize);
+        for (let i = 0; i < 30 && over(e) && size > 18; i++) {
+          size *= 0.93;
+          e.style.fontSize = size + 'px';
+        }
+      });
+    doFit();
+    // Re-fit once the web font has loaded (it changes widths).
+    if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(doFit);
+  }
+
   function crownSvg() {
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
@@ -449,6 +469,7 @@
     }
     main.textContent = '';
     main.appendChild(built.el);
+    fitAll(built.el);
     ack(cue, 'started');
     sound(cue.name);
     if (built.fx) setTimeout(() => !token.cancelled && fx(built.fx), 350);

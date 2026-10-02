@@ -107,7 +107,11 @@ class App {
     if (!test && events.some((e) => e && e.source === 'mock')) {
       const real = events.filter((e) => !e || e.source !== 'mock');
       const mock = events.filter((e) => e && e.source === 'mock');
-      if (this.mode === 'rehearsal') this.ingest(mock, { test: true });
+      if (this.mode === 'rehearsal') {
+        this.reader.lastSeenTs = Date.now();
+        this.reader.mock = true;
+        this.ingest(mock, { test: true });
+      }
       else if (!this._mockWarned || Date.now() - this._mockWarned > 60000) {
         this._mockWarned = Date.now();
         this.notice('warn', 'Ignoring events from the mock show page. Switch to REHEARSAL mode to use it.');
@@ -118,7 +122,10 @@ class App {
     let accepted = 0;
     for (const evt of events) {
       if (!evt || typeof evt.type !== 'string' || typeof evt.data !== 'object' || evt.data === null) continue;
-      if (!test) this.reader.lastSeenTs = Date.now();
+      if (!test) {
+        this.reader.lastSeenTs = Date.now();
+        this.reader.mock = false;
+      }
       try {
         this._handle(evt, store, !!test);
         accepted += 1;
@@ -153,6 +160,10 @@ class App {
         break;
       case 'probe_status':
       case 'probe_heartbeat':
+        if (d.visible === false && !this.reader.hiddenWarned) {
+          this.reader.hiddenWarned = true;
+          this.notice('warn', 'The Whatnot tab is hidden or minimised. Chrome slows hidden tabs: keep it visible.');
+        } else if (d.visible) this.reader.hiddenWarned = false;
         if (d.health) this.reader.health = d.health;
         if (d.selectorsVersion) this.reader.selectorsVersion = d.selectorsVersion;
         break;
@@ -344,6 +355,16 @@ class App {
         this.airSale(last.saleId, store);
         return { ok: true };
       }
+      case 'air_review':
+      case 'dismiss_review': {
+        // Stream Deck friendly: act on the most recent sale waiting for review.
+        const waiting = store.activeSales().filter((s) => s.review);
+        const s = waiting[waiting.length - 1];
+        if (!s) throw new Error('no sale waiting for review');
+        if (name === 'air_review') this.airSale(s.saleId, store);
+        else this.dismissSale(s.saleId);
+        return { ok: true, saleId: s.saleId };
+      }
       case 'stats':
         return this.sendCue(R.makeCue('stats', R.statsPayload(sum, cfg), cfg));
       case 'top_buyers': {
@@ -502,6 +523,7 @@ class App {
           lastSeenTs: this.reader.lastSeenTs,
           health: this.reader.health,
           selectorsVersion: this.reader.selectorsVersion,
+          mock: !!this.reader.mock,
         },
         overlays: this.count('overlay'),
         dashboards: this.count('dashboard'),

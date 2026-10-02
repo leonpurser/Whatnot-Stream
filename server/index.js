@@ -12,7 +12,6 @@ const { App } = require('./lib/app');
 
 const PUBLIC = path.join(__dirname, 'public');
 const DATA = process.env.WNSC_DATA || path.join(ROOT, 'data');
-fs.mkdirSync(DATA, { recursive: true });
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -30,6 +29,7 @@ const MIME = {
 };
 
 function createServer({ dataDir = DATA } = {}) {
+  fs.mkdirSync(dataDir, { recursive: true });
   const config = new Config(dataDir);
   const app = new App({ dataDir, config });
   const port = config.get('port');
