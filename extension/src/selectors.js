@@ -104,6 +104,12 @@
     // (warning "price_is_guess"). Set true once the guess has been checked
     // against 10-20 real sales.
     trustPriceGuess: false,
+    // A price shown right beside Whatnot's red "Sold" label when the win
+    // appears counts as confirmed (no "price_is_guess" warning). Set false to
+    // treat it as a guess too.
+    trustSoldLabelPrice: true,
+    // After "X won!" appears, wait up to this long for the "Sold" label.
+    soldLabelWaitMs: 1500,
   };
 
   // Selector overrides applied only on the local mock page (tools/mock-show),

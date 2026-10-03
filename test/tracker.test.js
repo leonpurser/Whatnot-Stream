@@ -21,6 +21,7 @@ function snap(ts, o) {
     nextBid: gbp(o.next),
     currentPrice: gbp(o.price),
     priceGuess: gbp(o.guess),
+    priceGuessSoldLabel: !!o.soldLabel,
     isGiveaway: !!o.giveaway,
   };
 }
@@ -218,6 +219,8 @@ test('price from text guess is used but flagged until trusted', () => {
     [t, { title: 'Premium vintage clothing #23', timer: 2, bids: 3, status: 'altin12345 is Winning!', next: 4, guess: 3 }],
     [t + 2000, { title: 'Premium vintage clothing #23', bids: 3, status: 'altin12345 won!', guess: 3 }],
     [t + 2400, { title: 'Premium vintage clothing #23', bids: 3, status: 'altin12345 won!', guess: 3 }],
+    // no "Sold" label ever appears, so after the wait it stays a guess
+    [t + 4000, { title: 'Premium vintage clothing #23', bids: 3, status: 'altin12345 won!', guess: 3 }],
   ];
   let sale = types(run(new W.AuctionTracker(W.TUNING), frames(9_000_000)), 'sale')[0];
   assert.equal(sale.data.price, 3);
@@ -241,4 +244,47 @@ test('a real selector price beats the text guess', () => {
   const sale = types(evs, 'sale')[0];
   assert.equal(sale.data.price, 7);
   assert.equal(sale.data.priceSource, 'price-selector');
+});
+
+test('price beside the "Sold" label counts as confirmed', () => {
+  const tr = new W.AuctionTracker(W.TUNING);
+  const t = 11_000_000;
+  const T = 'Premium vintage clothing #23';
+  const evs = run(tr, [
+    [t, { title: T, timer: 2, bids: 3, status: 'altin12345 is Winning!', next: 4, guess: 3 }],
+    [t + 2000, { title: T, bids: 3, status: 'altin12345 won!', guess: 3, soldLabel: true }],
+    [t + 2400, { title: T, bids: 3, status: 'altin12345 won!', guess: 3, soldLabel: true }],
+  ]);
+  const sale = types(evs, 'sale')[0];
+  assert.equal(sale.data.price, 3);
+  assert.equal(sale.data.priceSource, 'sold-label');
+  assert.deepEqual(sale.data.warnings, []);
+  assert.equal(sale.data.confidence, 'ok');
+});
+
+test('waits briefly for the "Sold" label, then falls back to a guess', () => {
+  const T = 'Polo #9';
+  // Label arrives 600ms after the win text: confirmed.
+  let tr = new W.AuctionTracker(W.TUNING);
+  let t = 12_000_000;
+  let evs = run(tr, [
+    [t, { title: T, timer: 1, bids: 2, status: 'amy is Winning!', guess: 5 }],
+    [t + 1000, { title: T, bids: 2, status: 'amy won!', guess: 5 }],
+    [t + 1400, { title: T, bids: 2, status: 'amy won!', guess: 5 }],
+    [t + 1600, { title: T, bids: 2, status: 'amy won!', guess: 5, soldLabel: true }],
+  ]);
+  assert.equal(types(evs, 'sale').length, 1);
+  assert.equal(types(evs, 'sale')[0].data.priceSource, 'sold-label');
+  // Label never arrives: sale still fires after the wait, as a guess.
+  tr = new W.AuctionTracker(W.TUNING);
+  t = 13_000_000;
+  evs = run(tr, [
+    [t, { title: T, timer: 1, bids: 2, status: 'amy is Winning!', guess: 5 }],
+    [t + 1000, { title: T, bids: 2, status: 'amy won!', guess: 5 }],
+    [t + 1500, { title: T, bids: 2, status: 'amy won!', guess: 5 }],
+  ]);
+  assert.equal(types(evs, 'sale').length, 0);
+  evs = run(tr, [[t + 1000 + W.TUNING.saleConfirmMs + W.TUNING.soldLabelWaitMs + 10, { title: T, bids: 2, status: 'amy won!', guess: 5 }]]);
+  assert.equal(types(evs, 'sale')[0].data.priceSource, 'text-guess');
+  assert.ok(types(evs, 'sale')[0].data.warnings.includes('price_is_guess'));
 });

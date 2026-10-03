@@ -21,6 +21,8 @@
     saleDedupWindowMs: 8000,
     extensionJumpSec: 2,
     trustPriceGuess: false,
+    trustSoldLabelPrice: true,
+    soldLabelWaitMs: 1500,
   };
 
   function makeEvent(type, ts, auctionId, data) {
@@ -210,6 +212,14 @@
         this.nextCheckAt = a.pendingWin.since + this.t.saleConfirmMs + 20;
         return;
       }
+      // Whatnot shows the final price next to a red "Sold" label. If we only
+      // have a text guess and that label hasn't rendered yet, wait briefly for
+      // it so the price can be confirmed rather than guessed.
+      const onlyGuess = !s.currentPrice && !a.currentPrice && !s.status.price && !!(s.priceGuess || a.priceGuess);
+      if (onlyGuess && !a.isGiveaway && !s.priceGuessSoldLabel && s.ts - a.pendingWin.since < this.t.saleConfirmMs + this.t.soldLabelWaitMs) {
+        this.nextCheckAt = s.ts + 250;
+        return;
+      }
       this._finalize(a, s, ev);
     }
 
@@ -227,6 +237,10 @@
       } else if (s.status.price) {
         price = s.status.price;
         priceSource = 'status-text';
+      } else if (s.priceGuess && s.priceGuessSoldLabel && this.t.trustSoldLabelPrice) {
+        // "£X" right beside Whatnot's "Sold" label at the moment of the win.
+        price = s.priceGuess;
+        priceSource = 'sold-label';
       } else if (s.priceGuess || a.priceGuess) {
         // Prefer the value on screen at the moment of the win.
         price = s.priceGuess || a.priceGuess;
